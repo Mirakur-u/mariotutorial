@@ -14,12 +14,14 @@ enum PlayerMode {
 
 #On ready
 const POINTS_LABEL_SCENE = preload("res://Scenes/points_label.tscn")
+const SMALL_MARIO_COLLISION_SHAPE = preload("res://CollisionShapes/small_mario_collision_shape.tres")
+const BIG_MARIO_COLLISION_SHAPE = preload("res://CollisionShapes/big_mario_collision_shape.tres")
 
 #References
 @onready var animated_sprite_2d: AnimatedSprite2D = $AnimatedSprite2D as PlayerAnimatedSprite
 @onready var area_collision_shape: CollisionShape2D = $Area2D/AreaCollisionShape
+@onready var area_2d: Area2D = $Area2D
 @onready var body_collision_shape: CollisionShape2D = $BodyCollisionShape
-
 
 @export_group("Locomotion")
 @export var run_speed_damping = 0.5
@@ -36,6 +38,10 @@ const POINTS_LABEL_SCENE = preload("res://Scenes/points_label.tscn")
 
 var player_mode = PlayerMode.SMALL
 
+
+#Player state flags
+
+var is_dead = false
 
 func _physics_process(delta):
 	 
@@ -62,16 +68,22 @@ func _physics_process(delta):
 	animated_sprite_2d.trigger_animation(velocity, direction, player_mode)
 	
 	
+	var collision = get_last_slide_collision()
+	if collision != null:
+		handle_movement_collision(collision)
+	
 	move_and_slide()
-
 
 
 func _on_area_2d_area_entered(area: Area2D) -> void:
 	if area is Enemy:
 		handle_enemy_collision(area)
+	if area is Shroom:
+		handle_shroom_collision(area)
+		area.queue_free()
 
 func handle_enemy_collision(enemy: Enemy):
-	if enemy == null:
+	if enemy == null && is_dead:
 		return
 	
 	if is_instance_of(enemy, Koopa) and (enemy as Koopa).in_shell:
@@ -88,6 +100,13 @@ func handle_enemy_collision(enemy: Enemy):
 		else:
 			die()
 
+func handle_shroom_collision(area: Node2D):
+	if player_mode == PlayerMode.SMALL:
+		set_physics_process(false)
+		animated_sprite_2d.play("small_to_big")
+		set_collision_shapes(false)
+
+
 func spawn_points_label(enemy):
 	var points_label = POINTS_LABEL_SCENE.instantiate()
 	points_label.position = enemy.position + Vector2(-20, -20)
@@ -98,6 +117,37 @@ func on_enemy_stomped():
 	velocity.y = stomp_y_velocity
 
 func die():
-	print ("Die")
-	
-	
+	if player_mode == PlayerMode.SMALL:
+		is_dead = true
+		animated_sprite_2d.play("small_death")
+		set_collision_layer_value(1, false)
+		area_2d.set_collision_mask_value(3, false)
+		
+		set_physics_process(false)
+
+		var death_tween = get_tree().create_tween()
+		death_tween.tween_property(self, "position", position+Vector2(0, -48), .5)
+		death_tween.chain().tween_property(self, "position", position+Vector2(0,256), 1)
+		death_tween.tween_callback(func (): get_tree().reload_current_scene())
+		
+	else:
+		big_to_small()
+
+func handle_movement_collision(collision: KinematicCollision2D):
+	if collision.get_collider() is Block:
+		var collision_angle = rad_to_deg(collision.get_angle())
+		if roundf(collision_angle) == 180:
+			(collision.get_collider() as Block).bump(player_mode)
+
+func set_collision_shapes(is_small: bool):
+	var collision_shape = SMALL_MARIO_COLLISION_SHAPE if is_small else BIG_MARIO_COLLISION_SHAPE
+	area_collision_shape.set_deferred("shape", collision_shape)
+	body_collision_shape.set_deferred("shape", collision_shape)
+
+
+func big_to_small():
+	set_collision_layer_value(1, false)
+	set_physics_process(false)
+	var animation_name = "small_to_big" if player_mode == PlayerMode.BIG else "small_to_shooting"
+	animated_sprite_2d.play(animation_name, 1.0, true)
+	set_collision_shapes(true)

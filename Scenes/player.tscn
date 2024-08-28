@@ -1,4 +1,4 @@
-[gd_scene load_steps=29 format=3 uid="uid://ckvggcsntfyj6"]
+[gd_scene load_steps=28 format=3 uid="uid://ckvggcsntfyj6"]
 
 [ext_resource type="Script" path="res://Scripts/player.gd" id="1_m2e5d"]
 [ext_resource type="Texture2D" uid="uid://d3jwm15et3t22" path="res://Assets/Sprites/Mario_Small_Idle.png" id="2_6hai1"]
@@ -237,7 +237,7 @@ animations = [{
 "duration": 1.0,
 "texture": ExtResource("2_bjcgn")
 }],
-"loop": true,
+"loop": false,
 "name": &"small_to_big",
 "speed": 10.0
 }, {
@@ -271,26 +271,25 @@ animations = [{
 "speed": 10.0
 }]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_qgvi4"]
-size = Vector2(12, 16)
-
 [node name="player" type="CharacterBody2D"]
-collision_mask = 6
+collision_mask = 54
 script = ExtResource("1_m2e5d")
 speed = 250.0
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = SubResource("SpriteFrames_bofey")
-animation = &"small_slide"
+animation = &"small_to_big"
 script = ExtResource("25_re02g")
 
 [node name="Area2D" type="Area2D" parent="."]
-collision_mask = 4
+collision_mask = 60
 
 [node name="AreaCollisionShape" type="CollisionShape2D" parent="Area2D"]
-shape = SubResource("RectangleShape2D_qgvi4")
+shape = ExtResource("3_28anu")
 
 [node name="BodyCollisionShape" type="CollisionShape2D" parent="."]
 shape = ExtResource("3_28anu")
 
+[connection signal="animation_finished" from="AnimatedSprite2D" to="AnimatedSprite2D" method="_on_animation_finished"]
+[connection signal="frame_changed" from="AnimatedSprite2D" to="AnimatedSprite2D" method="_on_frame_changed"]
 [connection signal="area_entered" from="Area2D" to="." method="_on_area_2d_area_entered"]

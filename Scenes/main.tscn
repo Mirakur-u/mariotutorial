@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://315yynb64n4a"]
+[gd_scene load_steps=16 format=3 uid="uid://315yynb64n4a"]
 
 [ext_resource type="Texture2D" uid="uid://co3bdq1m4vg4f" path="res://Assets/Sprites/Brick.png" id="1_13icr"]
 [ext_resource type="Texture2D" uid="uid://bh2i2pbd72n30" path="res://Assets/Sprites/GroundBlock.png" id="2_gexyx"]
@@ -7,7 +7,8 @@
 [ext_resource type="Texture2D" uid="uid://dtkrgfs1x5qrr" path="res://Assets/Sprites/UndergroundBrick.png" id="5_8d6o2"]
 [ext_resource type="PackedScene" uid="uid://ckvggcsntfyj6" path="res://Scenes/player.tscn" id="6_hibwc"]
 [ext_resource type="PackedScene" uid="uid://dloeidrwp8lii" path="res://Scenes/goomba.tscn" id="7_unyi4"]
-[ext_resource type="PackedScene" uid="uid://datq2j8s603y2" path="res://Scenes/koopa.tscn" id="8_q548t"]
+[ext_resource type="PackedScene" uid="uid://ewnw7ifdhqo8" path="res://Scenes/mystery_box.tscn" id="8_gqerf"]
+[ext_resource type="Script" path="res://Scripts/level_manager.gd" id="9_w74ak"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_cmbu0"]
 texture = ExtResource("1_13icr")
@@ -55,16 +56,14 @@ zoom = Vector2(2.75, 2.75)
 [node name="player" parent="." instance=ExtResource("6_hibwc")]
 position = Vector2(-308.857, 76.6032)
 
-[node name="Enemies" type="Node" parent="."]
+[node name="Goomba" parent="." instance=ExtResource("7_unyi4")]
+position = Vector2(-3, 94)
+horizontal_speed = 0
 
-[node name="Koopa" parent="Enemies" instance=ExtResource("8_q548t")]
-position = Vector2(34, 40)
+[node name="MysteryBox" parent="." instance=ExtResource("8_gqerf")]
+z_index = 3
+position = Vector2(-237, 62)
+bonus_type = 1
 
-[node name="Koopa3" parent="Enemies" instance=ExtResource("8_q548t")]
-position = Vector2(256, 60)
-
-[node name="Goomba" parent="Enemies" instance=ExtResource("7_unyi4")]
-position = Vector2(-46, 45)
-
-[node name="Koopa2" parent="Enemies" instance=ExtResource("8_q548t")]
-position = Vector2(134, 61)
+[node name="LevelManager" type="Node" parent="." groups=["level_manager"]]
+script = ExtResource("9_w74ak")

@@ -1,0 +1,49 @@
+[gd_scene load_steps=8 format=3 uid="uid://cwndm3h2de34u"]
+
+[ext_resource type="Script" path="res://Scripts/fireball.gd" id="1_fxwkl"]
+[ext_resource type="Texture2D" uid="uid://c135f55fbxgm3" path="res://Assets/Sprites/fireball1.png" id="1_q22ux"]
+[ext_resource type="Texture2D" uid="uid://hiugutq3ty4p" path="res://Assets/Sprites/fireball2.png" id="2_4oibt"]
+[ext_resource type="Texture2D" uid="uid://bdgbfwhb1nnqe" path="res://Assets/Sprites/fireball3.png" id="3_royeb"]
+[ext_resource type="Texture2D" uid="uid://dhyiy4t3j3xga" path="res://Assets/Sprites/fireball4.png" id="4_r4hqb"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_5yuk0"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_q22ux")
+}, {
+"duration": 1.0,
+"texture": ExtResource("2_4oibt")
+}, {
+"duration": 1.0,
+"texture": ExtResource("3_royeb")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_r4hqb")
+}],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_vgnxu"]
+size = Vector2(8, 8)
+
+[node name="Fireball" type="Area2D"]
+collision_layer = 64
+collision_mask = 60
+script = ExtResource("1_fxwkl")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+sprite_frames = SubResource("SpriteFrames_5yuk0")
+autoplay = "default"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_vgnxu")
+
+[node name="RayCast2D" type="RayCast2D" parent="."]
+target_position = Vector2(0, 5)
+collision_mask = 18
+
+[connection signal="area_entered" from="." to="." method="_on_area_entered"]
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]

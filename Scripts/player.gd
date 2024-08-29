@@ -12,16 +12,20 @@ enum PlayerMode {
 	SHOOTING
 }
 
+const PIPE_ENTER_THRESHOLD = 10
+
 #On ready
 const POINTS_LABEL_SCENE = preload("res://Scenes/points_label.tscn")
 const SMALL_MARIO_COLLISION_SHAPE = preload("res://CollisionShapes/small_mario_collision_shape.tres")
 const BIG_MARIO_COLLISION_SHAPE = preload("res://CollisionShapes/big_mario_collision_shape.tres")
+const FIREBALL_SCENE = preload("res://Scenes/fireball.tscn")
 
 #References
 @onready var animated_sprite_2d: AnimatedSprite2D = $AnimatedSprite2D as PlayerAnimatedSprite
 @onready var area_collision_shape: CollisionShape2D = $Area2D/AreaCollisionShape
 @onready var area_2d: Area2D = $Area2D
 @onready var body_collision_shape: CollisionShape2D = $BodyCollisionShape
+@onready var shooting_point: Marker2D = $ShootingPoint
 
 @export_group("Locomotion")
 @export var run_speed_damping = 0.5
@@ -29,25 +33,32 @@ const BIG_MARIO_COLLISION_SHAPE = preload("res://CollisionShapes/big_mario_colli
 @export var jump_velocity = -350
 @export_group("")
 
-
 @export_group("Stomping enemies")
 @export var min_stomp_degree = 35
 @export var max_stomp_degree = 145
 @export var stomp_y_velocity = -150
 @export_group("")
 
+@export_group("Camera sync")
+@export var camera_sync: Camera2D
+@export var should_camera_sync: bool = false
+@export_group("")
+
 var player_mode = PlayerMode.SMALL
 
-
 #Player state flags
-
 var is_dead = false
 
 func _physics_process(delta):
 	 
+	var camera_left_bound = camera_sync.global_position.x - camera_sync.get_viewport_rect().size.x/2/camera_sync.zoom.x
 	#Apply gravity
 	if not is_on_floor():
 		velocity.y += gravity * delta
+
+	if global_position.x < camera_left_bound + 8 && sign(velocity.x) == -1:
+		velocity = Vector2.ZERO
+		return
 
 	#Handle Jumps
 	if Input.is_action_just_pressed("jump") and is_on_floor():
@@ -57,6 +68,7 @@ func _physics_process(delta):
 		velocity.y *= 0.5
 		
 	
+	
 	#Handle axis movement
 	var direction = Input.get_axis("left","right")
 	
@@ -65,7 +77,10 @@ func _physics_process(delta):
 	else:
 		velocity.x = move_toward(velocity.x, 0, speed * delta)
 	
-	animated_sprite_2d.trigger_animation(velocity, direction, player_mode)
+	if Input.is_action_just_pressed("shoot") && player_mode == Player.PlayerMode.SHOOTING:
+		shoot()
+	else:
+		animated_sprite_2d.trigger_animation(velocity, direction, player_mode)
 	
 	
 	var collision = get_last_slide_collision()
@@ -74,6 +89,10 @@ func _physics_process(delta):
 	
 	move_and_slide()
 
+func _process(delta):
+	if global_position.x > camera_sync.global_position.x && should_camera_sync:
+		camera_sync.global_position.x = global_position.x
+
 
 func _on_area_2d_area_entered(area: Area2D) -> void:
 	if area is Enemy:
@@ -81,7 +100,11 @@ func _on_area_2d_area_entered(area: Area2D) -> void:
 	if area is Shroom:
 		handle_shroom_collision(area)
 		area.queue_free()
-
+	if area is ShootingFlower:
+		handle_flower_collision()
+		area.queue_free()
+		
+		
 func handle_enemy_collision(enemy: Enemy):
 	if enemy == null && is_dead:
 		return
@@ -106,6 +129,11 @@ func handle_shroom_collision(area: Node2D):
 		animated_sprite_2d.play("small_to_big")
 		set_collision_shapes(false)
 
+func handle_flower_collision():
+	set_physics_process(false)
+	var animation_name = "small_to_shooting" if player_mode == PlayerMode.SMALL else "big_to_shooting"
+	animated_sprite_2d.play(animation_name)
+	set_collision_shapes(false)
 
 func spawn_points_label(enemy):
 	var points_label = POINTS_LABEL_SCENE.instantiate()
@@ -138,6 +166,12 @@ func handle_movement_collision(collision: KinematicCollision2D):
 		var collision_angle = rad_to_deg(collision.get_angle())
 		if roundf(collision_angle) == 180:
 			(collision.get_collider() as Block).bump(player_mode)
+	
+	if collision.get_collider() is Pipe:
+		var collision_angle = rad_to_deg(collision.get_angle())
+		if roundf(collision_angle) == 0 && Input.is_action_just_pressed("down") && absf(collision.get_collider().position.x - position.x < PIPE_ENTER_THRESHOLD  && PIPE_ENTER_THRESHOLD > position.x -collision.get_collider().position.x && collision.get_collider().is_traversable):
+			print("GO DOWN")
+			handle_pipe_collision()
 
 func set_collision_shapes(is_small: bool):
 	var collision_shape = SMALL_MARIO_COLLISION_SHAPE if is_small else BIG_MARIO_COLLISION_SHAPE
@@ -151,3 +185,21 @@ func big_to_small():
 	var animation_name = "small_to_big" if player_mode == PlayerMode.BIG else "small_to_shooting"
 	animated_sprite_2d.play(animation_name, 1.0, true)
 	set_collision_shapes(true)
+
+func shoot():
+	animated_sprite_2d.play("shoot")
+	set_physics_process(false)
+	var fireball = FIREBALL_SCENE.instantiate()
+	fireball.direction = sign(animated_sprite_2d.scale.x)
+	fireball.global_position = shooting_point.global_position
+	get_tree().root.add_child(fireball)
+
+func handle_pipe_collision():
+	set_physics_process(false)
+	var pipe_tween = get_tree().create_tween()
+	pipe_tween.tween_property(self, "position", position + Vector2(0,32), 1)
+	pipe_tween.tween_callback(switch_to_underground)
+	
+func switch_to_underground():
+	get_tree().change_scene_to_file("res://Scenes/underground.tscn")
+	SceneData.player_mode = player_mode

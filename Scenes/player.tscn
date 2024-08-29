@@ -100,7 +100,7 @@ animations = [{
 "duration": 1.0,
 "texture": ExtResource("9_wm8dv")
 }],
-"loop": true,
+"loop": false,
 "name": &"big_to_shooting",
 "speed": 10.0
 }, {
@@ -108,7 +108,7 @@ animations = [{
 "duration": 1.0,
 "texture": ExtResource("10_31hu4")
 }],
-"loop": true,
+"loop": false,
 "name": &"shoot",
 "speed": 10.0
 }, {
@@ -266,19 +266,25 @@ animations = [{
 "duration": 1.0,
 "texture": ExtResource("9_wm8dv")
 }],
-"loop": true,
+"loop": false,
 "name": &"small_to_shooting",
 "speed": 10.0
 }]
 
 [node name="player" type="CharacterBody2D"]
-collision_mask = 54
+collision_mask = 62
 script = ExtResource("1_m2e5d")
-speed = 250.0
+run_speed_damping = null
+speed = null
+jump_velocity = null
+min_stomp_degree = null
+max_stomp_degree = null
+stomp_y_velocity = null
+should_camera_sync = null
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = SubResource("SpriteFrames_bofey")
-animation = &"small_to_big"
+animation = &"shoot"
 script = ExtResource("25_re02g")
 
 [node name="Area2D" type="Area2D" parent="."]
@@ -289,6 +295,9 @@ shape = ExtResource("3_28anu")
 
 [node name="BodyCollisionShape" type="CollisionShape2D" parent="."]
 shape = ExtResource("3_28anu")
+
+[node name="ShootingPoint" type="Marker2D" parent="."]
+position = Vector2(7, -5)
 
 [connection signal="animation_finished" from="AnimatedSprite2D" to="AnimatedSprite2D" method="_on_animation_finished"]
 [connection signal="frame_changed" from="AnimatedSprite2D" to="AnimatedSprite2D" method="_on_frame_changed"]

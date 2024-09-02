@@ -37,7 +37,7 @@ func bump(player_mode: Player.PlayerMode):
 		BonusType.COIN:
 			spawn_coin()
 		BonusType.SHROOM:
-			spawn_shroom()
+			spawn_shroom(player_mode)
 		BonusType.FLOWER:
 			spawn_flower()
 
@@ -45,11 +45,16 @@ func make_empty():
 	is_empty = true
 	animated_sprite_2d.play("empty")
 
-func spawn_shroom():
-	var shroom = SHROOM_SCENE.instantiate()
-	shroom.global_position = global_position
-	get_tree().root.add_child(shroom)
-	
+func spawn_shroom(player_mode: Player.PlayerMode):
+	#get_tree().get_first_node_in_group("player")
+	if player_mode == Player.PlayerMode.SMALL:
+		var shroom = SHROOM_SCENE.instantiate()
+		shroom.global_position = global_position
+		get_tree().root.add_child(shroom)
+	elif player_mode == Player.PlayerMode.BIG || player_mode == Player.PlayerMode.SHOOTING:
+		spawn_flower()
+
+
 func spawn_coin():
 	var coin = COIN_SCENE.instantiate()
 	coin.global_position = global_position + Vector2 (0, -16)

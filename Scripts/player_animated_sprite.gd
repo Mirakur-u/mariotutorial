@@ -62,3 +62,8 @@ func _on_frame_changed() -> void:
 			offset= Vector2(0,0 if player_mode == Player.PlayerMode.BIG else -8)
 		else:
 			offset = Vector2(0,8 if player_mode == Player.PlayerMode.BIG else 0)
+
+
+func on_pole(player_mode: Player.PlayerMode):
+	var animation_prefix = Player.PlayerMode.keys()[player_mode].to_snake_case()
+	play("%s_pole" % animation_prefix)

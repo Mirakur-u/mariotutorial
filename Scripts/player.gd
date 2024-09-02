@@ -3,6 +3,7 @@ extends CharacterBody2D
 class_name Player
 
 signal points_scored(points: int)
+signal castle_entered
 
 var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
 
@@ -26,10 +27,12 @@ const FIREBALL_SCENE = preload("res://Scenes/fireball.tscn")
 @onready var area_2d: Area2D = $Area2D
 @onready var body_collision_shape: CollisionShape2D = $BodyCollisionShape
 @onready var shooting_point: Marker2D = $ShootingPoint
+@onready var slide_down_finished_position: Marker2D = $"../slide_down_finished_position"
+@onready var land_down_marker: Marker2D = $"../land_down_marker"
 
 @export_group("Locomotion")
 @export var run_speed_damping = 0.5
-@export var speed = 100.0
+@export var speed = 200.0
 @export var jump_velocity = -350
 @export_group("")
 
@@ -44,10 +47,27 @@ const FIREBALL_SCENE = preload("res://Scenes/fireball.tscn")
 @export var should_camera_sync: bool = false
 @export_group("")
 
-var player_mode = PlayerMode.SMALL
+@export var castle_path: PathFollow2D
+
+
+
+var player_mode = Player.PlayerMode.SMALL
 
 #Player state flags
 var is_dead = false
+var is_on_path = false
+
+
+func _ready() -> void:
+	if SceneData.return_point != null && SceneData.return_point != Vector2.ZERO:
+		global_position = SceneData.return_point
+	 
+	if SceneData.player_mode != null:
+		player_mode = SceneData.player_mode 
+		if player_mode == Player.PlayerMode.SMALL:
+			set_collision_shapes(true)
+		else:
+			set_collision_shapes(false)
 
 func _physics_process(delta):
 	 
@@ -92,6 +112,13 @@ func _physics_process(delta):
 func _process(delta):
 	if global_position.x > camera_sync.global_position.x && should_camera_sync:
 		camera_sync.global_position.x = global_position.x
+		
+	
+	if is_on_path:
+		castle_path.progress += delta * speed /2
+		if castle_path.progress_ratio > 0.97:
+			is_on_path = false
+			land_down()
 
 
 func _on_area_2d_area_entered(area: Area2D) -> void:
@@ -108,10 +135,13 @@ func _on_area_2d_area_entered(area: Area2D) -> void:
 func handle_enemy_collision(enemy: Enemy):
 	if enemy == null && is_dead:
 		return
+	var level_manager = get_tree().get_first_node_in_group("level_manager")
+	
 	
 	if is_instance_of(enemy, Koopa) and (enemy as Koopa).in_shell:
 		(enemy as Koopa).on_stomp(global_position)
 		spawn_points_label(enemy)
+		level_manager.on_points_scored(100)
 	else:
 		
 		var angle_of_collision = rad_to_deg(position.angle_to_point(enemy.position))
@@ -120,6 +150,7 @@ func handle_enemy_collision(enemy: Enemy):
 			enemy.die()
 			on_enemy_stomped()
 			spawn_points_label(enemy)
+			level_manager.on_points_scored(100)
 		else:
 			die()
 
@@ -185,6 +216,7 @@ func big_to_small():
 	var animation_name = "small_to_big" if player_mode == PlayerMode.BIG else "small_to_shooting"
 	animated_sprite_2d.play(animation_name, 1.0, true)
 	set_collision_shapes(true)
+	
 
 func shoot():
 	animated_sprite_2d.play("shoot")
@@ -201,5 +233,74 @@ func handle_pipe_collision():
 	pipe_tween.tween_callback(switch_to_underground)
 	
 func switch_to_underground():
-	get_tree().change_scene_to_file("res://Scenes/underground.tscn")
+	var level_manager = get_tree().get_first_node_in_group("level_manager")
 	SceneData.player_mode = player_mode
+	SceneData.coins = level_manager.coins
+	SceneData.points = level_manager.points
+	get_tree().change_scene_to_file("res://Scenes/underground.tscn")
+
+	
+	
+
+
+func handle_pipe_connector_entrance_collision():
+	set_physics_process(false)
+	var pipe_tween = get_tree().create_tween()
+	pipe_tween.tween_property(self, "position" , position + Vector2(32,0), 1)
+	pipe_tween.tween_callback(switch_to_main)
+
+
+func switch_to_main():
+	var level_manager = get_tree().get_first_node_in_group("level_manager")
+	SceneData.player_mode = player_mode
+	SceneData.coins = level_manager.coins
+	SceneData.points = level_manager.points
+	get_tree().change_scene_to_file("res://Scenes/main.tscn")
+	
+	
+
+
+func on_pole_hit():
+	set_physics_process(false)
+	velocity = Vector2.ZERO
+	if is_on_path:
+		return
+	
+	animated_sprite_2d.on_pole(player_mode)
+	
+	var slide_down_tween = get_tree().create_tween()
+	var slide_down_position = slide_down_finished_position.position
+	slide_down_tween.tween_property(self, "position", slide_down_position, 2)
+	slide_down_tween.tween_callback(slide_down_finished)
+
+func slide_down_finished():
+	var animation_prefix = Player.PlayerMode.keys()[player_mode].to_snake_case()
+	is_on_path = true
+	animated_sprite_2d.play("%s_jump" % animation_prefix)
+	reparent(castle_path)
+
+func land_down():
+	reparent(get_tree().root.get_node("main"))
+	var distance_to_marker = (land_down_marker.position - position).y
+	var land_tween = get_tree().create_tween()
+	land_tween.tween_property(self, "position", position + Vector2(0, distance_to_marker - get_half_sprite_size()), .5 )
+	land_tween.tween_callback(go_to_castle)
+
+func go_to_castle():
+	var animation_prefix = Player.PlayerMode.keys()[player_mode].to_snake_case()
+	animated_sprite_2d.play("%s_run" % animation_prefix)
+	
+	var run_to_castle_tween = get_tree().create_tween()
+	run_to_castle_tween.tween_property(self, "position", position + Vector2(90,0), 1)
+	run_to_castle_tween.tween_callback(finish)
+
+func finish():
+	var animation_prefix = Player.PlayerMode.keys()[player_mode].to_snake_case()
+	animated_sprite_2d.play("%s_idle" % animation_prefix)
+	var run_to_castle_tween = get_tree().create_tween()
+	run_to_castle_tween.tween_property(self, "position", position , 1)
+	run_to_castle_tween.tween_callback(queue_free)
+	emit_signal("castle_entered")
+
+func get_half_sprite_size():
+	return 8 if player_mode == Player.PlayerMode.SMALL else 16

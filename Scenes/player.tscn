@@ -272,15 +272,10 @@ animations = [{
 }]
 
 [node name="player" type="CharacterBody2D"]
+z_index = 5
 collision_mask = 62
 script = ExtResource("1_m2e5d")
-run_speed_damping = null
-speed = null
-jump_velocity = null
-min_stomp_degree = null
-max_stomp_degree = null
-stomp_y_velocity = null
-should_camera_sync = null
+jump_velocity = -360
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 sprite_frames = SubResource("SpriteFrames_bofey")
